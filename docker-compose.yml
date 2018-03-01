@@ -17,6 +17,15 @@ services:
             MYSQL_ROOT_PASSWORD: testytest
         ports:
             - 8082:3306
+   firebird-db:
+        image: jacobalberty/firebird
+        restart: always
+        environment:
+            ISC_PASSWORD: masterkey
+            FIREBIRD_USER: docker
+            FIREBIRD_PASSWORD: testytest
+        ports:
+            - 8083:3050
     adminer:
         image: jeern/adminer
         restart: always
