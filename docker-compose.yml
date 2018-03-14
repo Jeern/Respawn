@@ -1,6 +1,5 @@
 version: '3'
 
-
 services:
     postgres-db:
         image: postgres
@@ -17,17 +16,19 @@ services:
             MYSQL_ROOT_PASSWORD: testytest
         ports:
             - 8082:3306
-   firebird-db:
+    firebird-db:
         image: jacobalberty/firebird
         restart: always
         environment:
+            FIREBIRD_DATABASE: test.fdb
             ISC_PASSWORD: masterkey
             FIREBIRD_USER: docker
             FIREBIRD_PASSWORD: testytest
+            EnableLegacyClientAuth: 'true'
         ports:
-            - 8083:3050
+            - 3050:3050
     adminer:
-        image: jeern/adminer
+        image: jeern/adminer:v1
         restart: always
         ports:
             - 7070:80
