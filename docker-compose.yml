@@ -27,8 +27,14 @@ services:
             EnableLegacyClientAuth: 'true'
         ports:
             - 3050:3050
+    oracle:
+        image: sath89/oracle-12c
+        restart: always
+        ports:
+            - 8080:8080
+            - 1521:1521
     adminer:
         image: jeern/adminer:v1
         restart: always
         ports:
-            - 7070:80
+            - 8083:80

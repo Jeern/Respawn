@@ -3,19 +3,24 @@
   <PropertyGroup>
     <Description>Intelligent checkpoints for database tests</Description>
     <Copyright>Copyright Jimmy Bogard</Copyright>
-    <VersionPrefix>2.0.0</VersionPrefix>
+    <VersionPrefix>3.0.1</VersionPrefix>
     <Authors>Jimmy Bogard</Authors>
     <TargetFrameworks>net452;netstandard1.2</TargetFrameworks>
     <AssemblyName>Respawn</AssemblyName>
     <PackageId>Respawn</PackageId>
-    <PackageTags>mediator;request;response;queries;commands;notifications</PackageTags>
+    <PackageTags>tests;integration tests;database tests</PackageTags>
     <PackageProjectUrl>https://github.com/jbogard/Respawn</PackageProjectUrl>
     <PackageLicenseUrl>https://github.com/jbogard/Respawn/blob/master/LICENSE</PackageLicenseUrl>
     <RepositoryType>git</RepositoryType>
     <RepositoryUrl>git://github.com/jbogard/respawn</RepositoryUrl>
     <PackageIconUrl>https://github.com/jbogard/Respawn/raw/master/logo.png</PackageIconUrl>
+    <LangVersion>latest</LangVersion>
   </PropertyGroup>
 
+  <ItemGroup>
+    <PackageReference Include="System.ValueTuple" Version="4.3.0" />
+  </ItemGroup>
+  
   <ItemGroup Condition=" '$(TargetFramework)' == 'net452' ">
     <Reference Include="System" />
     <Reference Include="System.Data" />
