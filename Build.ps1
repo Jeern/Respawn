@@ -38,11 +38,28 @@ echo "build: Build version suffix is $buildSuffix"
 
 exec { & dotnet build Respawn.sln -c Release --version-suffix=$buildSuffix -v q /nologo }
 
-Push-Location -Path .\Respawn.Tests
+if (-Not (Test-Path 'env:APPVEYOR')) {
+	exec { & docker-compose up -d }
+}
 
-exec { & dotnet xunit -configuration Release -nobuild }
+try {
 
-Pop-Location
+	Push-Location -Path .\Respawn.UnitTests
+
+	exec { & dotnet xunit -configuration Release --fx-version 2.0.0 }
+} finally {
+	Pop-Location
+}
+
+
+try {
+
+	Push-Location -Path .\Respawn.DatabaseTests
+
+	exec { & dotnet xunit -configuration Release --fx-version 2.0.0 }
+} finally {
+	Pop-Location
+}
 
 if ($suffix -eq "") {
 	exec { & dotnet pack .\Respawn\Respawn.csproj -c Release -o ..\artifacts --include-symbols --no-build }
