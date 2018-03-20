@@ -1,4 +1,5 @@
-﻿using Xunit.Abstractions;
+﻿using System.Linq;
+using Xunit.Abstractions;
 
 #if NET452
 namespace Respawn.DatabaseTests
@@ -66,7 +67,7 @@ namespace Respawn.DatabaseTests
             finally
             {
                 _output.WriteLine(_createdUser);
-                _output.WriteLine(checkpoint.DeleteSql);
+                _output.WriteLine(checkpoint.DeleteSql.FirstOrDefault());
             }
 
             (await _database.ExecuteScalarAsync<int>("SELECT COUNT(1) FROM \"foo\"")).ShouldBe(0);
@@ -121,7 +122,7 @@ namespace Respawn.DatabaseTests
             }
             catch
             {
-                _output.WriteLine(checkpoint.DeleteSql ?? string.Empty);
+                _output.WriteLine(checkpoint.DeleteSql.FirstOrDefault() ?? string.Empty);
                 throw;
             }
 
@@ -174,7 +175,7 @@ namespace Respawn.DatabaseTests
             }
             catch
             {
-                _output.WriteLine(checkpoint.DeleteSql ?? string.Empty);
+                _output.WriteLine(checkpoint.DeleteSql.FirstOrDefault() ?? string.Empty);
                 throw;
             }
 
@@ -217,7 +218,7 @@ namespace Respawn.DatabaseTests
             }
             catch
             {
-                _output.WriteLine(checkpoint.DeleteSql ?? string.Empty);
+                _output.WriteLine(checkpoint.DeleteSql.FirstOrDefault() ?? string.Empty);
                 throw;
             }
 

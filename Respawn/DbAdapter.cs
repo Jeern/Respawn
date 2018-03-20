@@ -10,7 +10,14 @@ namespace Respawn
     {
         string BuildTableCommandText(Checkpoint checkpoint);
         string BuildRelationshipCommandText(Checkpoint checkpoint);
-        string BuildDeleteCommandText(GraphBuilder builder);
+        /// <summary>
+        /// Builds one or more delete commands. Some databases can accept multiple commands in one string. The adapters for those 
+        /// databases will typically just return all commands in the first string seperated by a database specific seperator.
+        /// Other Adapters like Firebird have to return each command in a seperate string.
+        /// </summary>
+        /// <param name="builder"></param>
+        /// <returns></returns>
+        IEnumerable<string> BuildDeleteCommandText(GraphBuilder builder);
         string BuildReseedSql(IEnumerable<Table> tablesToDelete);
     }
 
@@ -108,8 +115,7 @@ where 1=1";
                 {
                     builder.AppendLine($"ALTER TABLE {table.GetFullName(QuoteCharacter)} WITH CHECK CHECK CONSTRAINT ALL;");
                 }
-
-                return builder.ToString();
+                yield return builder.ToString();
             }
 
             public string BuildReseedSql(IEnumerable<Table> tablesToDelete)
@@ -221,7 +227,7 @@ where 1=1";
                 return commandText;
             }
 
-            public string BuildDeleteCommandText(GraphBuilder graph)
+            public IEnumerable<string> BuildDeleteCommandText(GraphBuilder graph)
             {
                 var builder = new StringBuilder();
 
@@ -238,7 +244,7 @@ where 1=1";
                     builder.AppendLine($"ALTER TABLE {table.GetFullName(QuoteCharacter)} ENABLE TRIGGER ALL;");
                 }
 
-                return builder.ToString();
+                yield return builder.ToString();
             }
 
             public string BuildReseedSql(IEnumerable<Table> tablesToDelete)
@@ -317,7 +323,7 @@ FROM INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS";
                 return commandText;
             }
 
-            public string BuildDeleteCommandText(GraphBuilder graph)
+            public IEnumerable<string> BuildDeleteCommandText(GraphBuilder graph)
             {
                 var builder = new StringBuilder();
 
@@ -328,7 +334,7 @@ FROM INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS";
                 }
                 builder.AppendLine("SET FOREIGN_KEY_CHECKS=1;");
 
-                return builder.ToString();
+                yield return builder.ToString();
             }
 
             public string BuildReseedSql(IEnumerable<Table> tablesToDelete)
@@ -401,10 +407,120 @@ from all_CONSTRAINTS     a
                 return commandText;
             }
 
-            public string BuildDeleteCommandText(GraphBuilder graph)
+            public IEnumerable<string> BuildDeleteCommandText(GraphBuilder graph)
             {
                 var deleteSql = string.Join("\n", BuildCommands(graph));
-                return $"BEGIN\n{deleteSql}\nEND;";
+                yield return $"BEGIN\n{deleteSql}\nEND;";
+            }
+
+            private IEnumerable<string> BuildCommands(GraphBuilder graph)
+            {
+                foreach (var rel in graph.CyclicalTableRelationships)
+                {
+                    yield return $"EXECUTE IMMEDIATE 'ALTER TABLE {rel.ParentTable.GetFullName(QuoteCharacter)} DISABLE CONSTRAINT {QuoteCharacter}{rel.Name}{QuoteCharacter}';";
+                }
+                foreach (var table in graph.ToDelete)
+                {
+                    yield return $"EXECUTE IMMEDIATE 'delete from {table.GetFullName(QuoteCharacter)}';";
+                }
+                foreach (var rel in graph.CyclicalTableRelationships)
+                {
+                    yield return $"EXECUTE IMMEDIATE 'ALTER TABLE {rel.ParentTable.GetFullName(QuoteCharacter)} ENABLE CONSTRAINT {QuoteCharacter}{rel.Name}{QuoteCharacter}';";
+                }
+            }
+            public string BuildReseedSql(IEnumerable<Table> tablesToDelete)
+            {
+                throw new System.NotImplementedException();
+            }
+        }
+
+        private class FirebirdDbAdapter : IDbAdapter
+        {
+            private const char QuoteCharacter = '"';
+
+            public string BuildTableCommandText(Checkpoint checkpoint)
+            {
+                //We could use rdb$owner_name as the first column, but Firebird does not support 
+                //prefixing with owner when selecting a column
+                string commandText = 
+@"select null, rdb$relation_name
+from rdb$relations
+where rdb$view_blr is null 
+and (rdb$system_flag is null or rdb$system_flag = 0)";
+
+                if (checkpoint.TablesToIgnore.Any())
+                {
+                    var args = string.Join(",", checkpoint.TablesToIgnore.Select(table => $"'{table}'").ToArray());
+
+                    commandText += " AND rdb$relation_name NOT IN (" + args + ")";
+                }
+                if (checkpoint.SchemasToExclude.Any())
+                {
+                    //One could argue against having SchemasToExclude and SchemasToInclude in the FirebirdAdapter because
+                    //it is a meaningless filtering on the owner_name (schemas does not exist in Firebird).  
+                    //I keep it here because I want the adapter to behave the same way as the other adapters, 
+                    //and because some might find it useful to use the owner_name for namespacing
+                    var args = string.Join(",", checkpoint.SchemasToExclude.Select(schema => $"'{schema}'").ToArray());
+
+                    commandText += " AND rdb$owner_name NOT IN (" + args + ")";
+                }
+                else if (checkpoint.SchemasToInclude.Any())
+                {
+                    var args = string.Join(",", checkpoint.SchemasToInclude.Select(schema => $"'{schema}'").ToArray());
+
+                    commandText += " AND rdb$owner_name IN (" + args + ")";
+                }
+
+                return commandText;
+            }
+
+            public string BuildRelationshipCommandText(Checkpoint checkpoint)
+            {
+                string commandText = @"
+SELECT
+    NULL,
+    drc.rdb$relation_name as TableName,
+    NULL,
+    mrc.rdb$relation_name as RefTableName,
+    drc.rdb$constraint_name as ConstraintName
+
+FROM
+    rdb$relation_constraints drc
+    JOIN rdb$index_segments dis ON drc.rdb$index_name = dis.rdb$index_name 
+    JOIN rdb$ref_constraints ON drc.rdb$constraint_name = rdb$ref_constraints.rdb$constraint_name
+    JOIN rdb$relation_constraints mrc ON rdb$ref_constraints.rdb$const_name_uq = mrc.rdb$constraint_name
+    JOIN rdb$index_segments mis ON mrc.rdb$index_name = mis.rdb$index_name 
+    JOIN (select r.rdb$relation_name, r.rdb$owner_name from rdb$relations r) ot on ot.rdb$relation_name = drc.rdb$relation_name
+
+WHERE
+    drc.rdb$constraint_type = 'FOREIGN KEY'
+";
+
+                if (checkpoint.TablesToIgnore.Any())
+                {
+                    var args = string.Join(",", checkpoint.TablesToIgnore.Select(s => $"'{s}'").ToArray());
+
+                    commandText += " AND drc.rdb$relation_name NOT IN (" + args + ")";
+                }
+                if (checkpoint.SchemasToExclude.Any())
+                {
+                    var args = string.Join(",", checkpoint.SchemasToExclude.Select(s => $"'{s}'").ToArray());
+
+                    commandText += " AND ot.rdb$owner_name NOT IN (" + args + ")";
+                }
+                else if (checkpoint.SchemasToInclude.Any())
+                {
+                    var args = string.Join(",", checkpoint.SchemasToInclude.Select(s => $"'{s}'").ToArray());
+
+                    commandText += " AND ot.rdb$owner_name IN (" + args + ")";
+                }
+
+                return commandText;
+            }
+
+            public IEnumerable<string> BuildDeleteCommandText(GraphBuilder graph)
+            {
+                return BuildCommands(graph);
             }
 
             private IEnumerable<string> BuildCommands(GraphBuilder graph)

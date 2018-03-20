@@ -150,7 +150,7 @@ CREATE TABLE `Bar` (
             }
             catch
             {
-                _output.WriteLine(checkpoint.DeleteSql ?? string.Empty);
+                _output.WriteLine(checkpoint.DeleteSql.FirstOrDefault() ?? string.Empty);
                 throw;
             }
 
@@ -234,7 +234,7 @@ CREATE TABLE `Bar` (
             }
             catch
             {
-                _output.WriteLine(checkpoint.DeleteSql ?? string.Empty);
+                _output.WriteLine(checkpoint.DeleteSql.FirstOrDefault() ?? string.Empty);
                 throw;
             }
 

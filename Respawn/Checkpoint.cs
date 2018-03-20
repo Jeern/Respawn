@@ -1,5 +1,6 @@
 ﻿
 using System.Collections;
+using System.Linq;
 using Respawn.Graph;
 
 namespace Respawn
@@ -7,7 +8,6 @@ namespace Respawn
     using System.Collections.Generic;
     using System.Data.Common;
     using System.Data.SqlClient;
-    using System.Linq;
     using System.Threading.Tasks;
 
     public class Checkpoint
@@ -17,7 +17,7 @@ namespace Respawn
         public string[] TablesToIgnore { get; set; } = new string[0];
         public string[] SchemasToInclude { get; set; } = new string[0];
         public string[] SchemasToExclude { get; set; } = new string[0];
-        public string DeleteSql { get; private set; }
+        public List<string> DeleteSql { get; private set; }
         public string ReseedSql { get; private set; }
         internal string DatabaseName { get; private set; }
         public bool WithReseed { get; set; } = false;
@@ -37,7 +37,7 @@ namespace Respawn
 
         public virtual async Task Reset(DbConnection connection)
         {
-            if (string.IsNullOrWhiteSpace(DeleteSql))
+            if (!DeleteSql.Any())
             {
                 DatabaseName = connection.Database;
                 await BuildDeleteTables(connection);
@@ -53,9 +53,12 @@ namespace Respawn
             using (var cmd = connection.CreateCommand())
             {
                 cmd.CommandTimeout = CommandTimeout ?? cmd.CommandTimeout;
-                cmd.CommandText = DeleteSql;
                 cmd.Transaction = tx;
-                await cmd.ExecuteNonQueryAsync();
+                foreach (var sql in DeleteSql)
+                {
+                    cmd.CommandText = sql;
+                    await cmd.ExecuteNonQueryAsync();
+                }
                 if (ReseedSql != null)
                 {
                     cmd.CommandText = ReseedSql;
@@ -74,7 +77,7 @@ namespace Respawn
 
             _graphBuilder = new GraphBuilder(allTables, allRelationships);
 
-            DeleteSql = DbAdapter.BuildDeleteCommandText(_graphBuilder);
+            DeleteSql = DbAdapter.BuildDeleteCommandText(_graphBuilder).ToList();
             if (WithReseed)
             {
                 ReseedSql = DbAdapter.BuildReseedSql(_graphBuilder.ToDelete);

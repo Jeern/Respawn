@@ -124,7 +124,7 @@ namespace Respawn.DatabaseTests
             }
             catch
             {
-                _output.WriteLine(checkpoint.DeleteSql ?? string.Empty);
+                _output.WriteLine(checkpoint.DeleteSql.FirstOrDefault() ?? string.Empty);
                 throw;
             }
 
@@ -163,7 +163,7 @@ namespace Respawn.DatabaseTests
             }
             catch
             {
-                _output.WriteLine(checkpoint.DeleteSql ?? string.Empty);
+                _output.WriteLine(checkpoint.DeleteSql.FirstOrDefault() ?? string.Empty);
                 throw;
             }
 
@@ -196,7 +196,7 @@ namespace Respawn.DatabaseTests
             }
             catch
             {
-                _output.WriteLine(checkpoint.DeleteSql ?? string.Empty);
+                _output.WriteLine(checkpoint.DeleteSql.FirstOrDefault() ?? string.Empty);
                 throw;
             }
 
@@ -248,7 +248,7 @@ namespace Respawn.DatabaseTests
             }
             catch
             {
-                _output.WriteLine(checkpoint.DeleteSql ?? string.Empty);
+                _output.WriteLine(checkpoint.DeleteSql.FirstOrDefault() ?? string.Empty);
                 throw;
             }
 
