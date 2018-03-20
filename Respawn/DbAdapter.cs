@@ -27,6 +27,7 @@ namespace Respawn
         public static readonly IDbAdapter Postgres = new PostgresDbAdapter();
         public static readonly IDbAdapter MySql = new MySqlAdapter();
         public static readonly IDbAdapter Oracle = new OracleDbAdapter();
+        public static readonly IDbAdapter Firebird = new FirebirdDbAdapter();
 
         private class SqlServerDbAdapter : IDbAdapter
         {
@@ -99,7 +100,7 @@ where 1=1";
                 return commandText;
             }
 
-            public string BuildDeleteCommandText(GraphBuilder graph)
+            public IEnumerable<string> BuildDeleteCommandText(GraphBuilder graph)
             {
                 var builder = new StringBuilder();
 
@@ -543,5 +544,6 @@ WHERE
                 throw new System.NotImplementedException();
             }
         }
+
     }
 }
